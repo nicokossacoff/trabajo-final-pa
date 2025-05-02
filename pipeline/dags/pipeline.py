@@ -1,6 +1,7 @@
 import datetime
 import pandas as pd
 import os
+import sqlite3
 from airflow.models.dag import DAG
 from airflow.operators.python import PythonOperator
 from airflow.operators.bash import BashOperator
@@ -29,6 +30,8 @@ def filter_data(path: str) -> None:
                 temp_df = pd.read_parquet(f'{path}/raw_data/{file}')
                 temp_df['date'] = temp_df['date'].astype('datetime64[ns]')
                 filtered_df = temp_df.loc[(temp_df['advertiser_id'].isin(active_advertisers)) & (temp_df['date'] == previous_date), :]
+
+                print(f'Filtered {file[:-8]} with data from {previous_date}')
                 filtered_df.to_parquet(f'{path}/temp/{file[:-8]}_{current_date}_filtered.parquet', index=False)
     except Exception as error:
         print(f'An error occurred: {error}')
@@ -46,14 +49,18 @@ def top_products(path: str, n: int = 20) -> None:
     try:
         # Gets the current date and the previous date
         current_date = datetime.datetime.now().strftime('%Y-%m-%d')
+        previous_date = (datetime.datetime.now() - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
 
         df = pd.read_parquet(f'{path}/temp/product_views_{current_date}_filtered.parquet')
         df_grouped = df.groupby(['advertiser_id', 'product_id']).size().reset_index(name='views')
         df_grouped = df_grouped.sort_values(by='views', ascending=False)
 
-        final_df = pd.DataFrame(columns=['advertiser_id', 'product_id'])
+        final_df = pd.DataFrame(columns=['advertiser_id', 'product_id', 'date'])
         for (advertiser, temp_df) in df_grouped.groupby('advertiser_id'):
             temp_df = temp_df.sort_values(by='views', ascending=False).head(n)
+            temp_df['date'] = previous_date
+            temp_df = temp_df.loc[:, ['advertiser_id', 'product_id', 'date']]
+            print(f'Added {len(temp_df)} products for {advertiser}')
             final_df = pd.concat([final_df, temp_df], ignore_index=True)
 
         final_df.to_parquet(f'{path}/temp/top_products_{current_date}.parquet', index=False)
@@ -72,6 +79,7 @@ def top_ctr_products(path: str, n: int = 20) -> None:
     """
     try:
         current_date = datetime.datetime.now().strftime('%Y-%m-%d')
+        previous_date = (datetime.datetime.now() - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
 
         # Loads DataFrame
         df = pd.read_parquet(f'{path}/temp/ads_views_{current_date}_filtered.parquet')
@@ -87,15 +95,82 @@ def top_ctr_products(path: str, n: int = 20) -> None:
         # Calculates CTR
         df_grouped['ctr'] = df_grouped['clicks'] / df_grouped['impressions']
 
-        final_df = pd.DataFrame(columns=['advertiser_id', 'product_id'])
-        for advertiser in df_grouped['advertiser_id'].unique():
-            df_temp = df_grouped.loc[df_grouped['advertiser_id'] == advertiser, :]
+        final_df = pd.DataFrame(columns=['advertiser_id', 'product_id', 'date'])
+        for (name, temp_df) in df_grouped.groupby('advertiser_id'):
+            # df_temp = df_grouped.loc[df_grouped['advertiser_id'] == advertiser, :]
             df_temp = df_temp.sort_values('ctr', ascending=False).head(n)
+            df_temp['date'] = previous_date
+            df_temp = df_temp.loc[:, ['advertiser_id', 'product_id', 'date']]
+            print(f'Added {len(df_temp)} products for {name}')
             final_df = pd.concat([final_df, df_temp], ignore_index=True)
 
         final_df.to_parquet(f'{path}/temp/top_ctr_products_{current_date}.parquet', index=False)
     except Exception as error:
         print(f'An error occurred: {error}')
+
+def create_tables(cursor: sqlite3.Cursor) -> None:
+    """
+    Creates the tables in the SQLite database.
+
+    Args:
+        cursor (sqlite3.Cursor): Cursor object to execute SQL commands.
+    Returns:
+        None
+    """
+    try:
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS top_products (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            advertiser_id VARCHAR(100),
+            product_id VARCHAR(100),
+            date DATE
+        )
+        """)
+
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS top_ctr_products (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            advertiser_id VARCHAR(100),
+            product_id VARCHAR(100),
+            date DATE
+        )
+        """)
+
+        print('Tables created successfully.')
+    except Exception as error:
+        print(f'An error occurred while creating tables: {error}')
+
+def upload_to_sql(db_path: str, file_path: str) -> None:
+    """
+    Uploads DataFrames to the SQLite database.
+
+    Args:
+        db_path (str): Path to the SQLite database.
+        file_path (str): Path to the directory containing the DataFrames.
+    Returns:
+        None
+    """
+    try:
+        # Create a connection with the database and a cursor
+        conn = sqlite3.connect(f'{db_path}/airflow.db')
+        cursor = conn.cursor()
+
+        # Creates tables (if they do not exist)
+        create_tables(cursor)
+
+        # Uploads DataFrames to SQL
+        current_date = datetime.datetime.now().strftime('%Y-%m-%d')
+
+        df_top_products = pd.read_parquet(f'{file_path}/temp/top_products_{current_date}.parquet')
+        df_top_products.to_sql('top_products', conn, if_exists='append', index=False)
+
+        df_top_ctr_products = pd.read_parquet(f'{file_path}/temp/top_ctr_products_{current_date}.parquet')
+        df_top_ctr_products.to_sql('top_ctr_products', conn, if_exists='append', index=False)
+
+        conn.commit()
+        conn.close()
+    except Exception as error:
+        print(f'An error occurred while uploading to SQL: {error}')
 
 with DAG(
     dag_id='recommendation-pipeline',
@@ -120,4 +195,14 @@ with DAG(
         op_kwargs={'path': '/Users/nicolaskossacoff/Documents/Projects/trabajo-final-pa/data'},
     )
 
+    db_writing = PythonOperator(
+        task_id='DBWriting',
+        python_callable=upload_to_sql,
+        op_kwargs={
+            'db_path': '/Users/nicolaskossacoff/airflow',
+            'file_path': '/Users/nicolaskossacoff/Documents/Projects/trabajo-final-pa/data'
+        },
+    )
+
     data_filter.set_downstream([top_prod, top_ctr_prod])
+    db_writing.set_upstream([top_prod, top_ctr_prod])
