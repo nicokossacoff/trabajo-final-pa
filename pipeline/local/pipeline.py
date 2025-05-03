@@ -120,7 +120,7 @@ def upload_to_sql(db_path: str, file_path: str) -> None:
     """
     try:
         # Create a connection with the database and a cursor
-        conn = sqlite3.connect(f'{db_path}/airflow.db')
+        conn = sqlite3.connect(f'{db_path}/recommendations.db')
         cursor = conn.cursor()
 
         # Uploads DataFrames to SQL
@@ -137,6 +137,8 @@ def upload_to_sql(db_path: str, file_path: str) -> None:
     except Exception as error:
         print(f'An error occurred while uploading to SQL: {error}')
 
+PATH = '/Users/nicolaskossacoff/Documents/Projects/trabajo-final-pa/data'
+
 with DAG(
     dag_id='recommendation-pipeline',
     description='This pipeline is used to generate recommendations for users.',
@@ -145,27 +147,27 @@ with DAG(
     data_filter = PythonOperator(
         task_id='FilterData',
         python_callable=filter_data,
-        op_kwargs={'path': '/Users/nicolaskossacoff/Documents/Projects/trabajo-final-pa/data'},
+        op_kwargs={'path': PATH},
     )
 
     top_prod = PythonOperator(
         task_id='TopProducts',
         python_callable=top_products,
-        op_kwargs={'path': '/Users/nicolaskossacoff/Documents/Projects/trabajo-final-pa/data'},
+        op_kwargs={'path': PATH},
     )
 
     top_ctr_prod = PythonOperator(
         task_id='TopCTR',
         python_callable=top_ctr_products,
-        op_kwargs={'path': '/Users/nicolaskossacoff/Documents/Projects/trabajo-final-pa/data'},
+        op_kwargs={'path': PATH},
     )
 
     db_writing = PythonOperator(
         task_id='DBWriting',
         python_callable=upload_to_sql,
         op_kwargs={
-            'db_path': '/Users/nicolaskossacoff/airflow',
-            'file_path': '/Users/nicolaskossacoff/Documents/Projects/trabajo-final-pa/data'
+            'db_path': PATH,
+            'file_path': PATH
         },
     )
 
