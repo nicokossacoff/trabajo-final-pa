@@ -108,38 +108,6 @@ def top_ctr_products(path: str, n: int = 20) -> None:
     except Exception as error:
         print(f'An error occurred: {error}')
 
-def create_tables(cursor: sqlite3.Cursor) -> None:
-    """
-    Creates the tables in the SQLite database.
-
-    Args:
-        cursor (sqlite3.Cursor): Cursor object to execute SQL commands.
-    Returns:
-        None
-    """
-    try:
-        cursor.execute("""
-        CREATE TABLE IF NOT EXISTS top_products (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            advertiser_id VARCHAR(100),
-            product_id VARCHAR(100),
-            date DATE
-        )
-        """)
-
-        cursor.execute("""
-        CREATE TABLE IF NOT EXISTS top_ctr_products (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            advertiser_id VARCHAR(100),
-            product_id VARCHAR(100),
-            date DATE
-        )
-        """)
-
-        print('Tables created successfully.')
-    except Exception as error:
-        print(f'An error occurred while creating tables: {error}')
-
 def upload_to_sql(db_path: str, file_path: str) -> None:
     """
     Uploads DataFrames to the SQLite database.
@@ -154,9 +122,6 @@ def upload_to_sql(db_path: str, file_path: str) -> None:
         # Create a connection with the database and a cursor
         conn = sqlite3.connect(f'{db_path}/airflow.db')
         cursor = conn.cursor()
-
-        # Creates tables (if they do not exist)
-        create_tables(cursor)
 
         # Uploads DataFrames to SQL
         current_date = datetime.datetime.now().strftime('%Y-%m-%d')
