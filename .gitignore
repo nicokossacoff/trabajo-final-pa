@@ -178,3 +178,4 @@ cython_debug/
 *.csv
 .idea/
 test.ipynb
+service_account.json
