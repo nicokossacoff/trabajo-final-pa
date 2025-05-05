@@ -72,7 +72,7 @@ def filter_data() -> None:
         # previous_date = (datetime.datetime.now() - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
 
         # Returns all the files in the bucket. This is an iterator
-        blobs = storage.Client.list_blobs(BUCKET_NAME, prefix='raw_data/')
+        blobs = client.list_blobs(BUCKET_NAME, prefix='raw_data/')
 
         # Iterate through the blobs
         for blob in blobs:
