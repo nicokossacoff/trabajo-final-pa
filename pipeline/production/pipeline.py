@@ -284,6 +284,7 @@ with DAG(
     dag_id='recommendation-pipeline',
     description='This pipeline is used to generate recommendations for users.',
     start_date=datetime.datetime(2025, 5, 2),
+    schedule_interval='0 0 * * *' # ⏰ Medianoche todos los días
 ) as dag:
     data_filter = PythonOperator(
         task_id='FilterData',
