@@ -194,7 +194,7 @@ def top_ctr_products(n: int = 20) -> None:
         # Calculates CTR
         df_grouped['ctr'] = df_grouped['clicks'] / df_grouped['impressions']
 
-        final_df = pd.DataFrame(columns=['advertiser_id', 'product_id', 'date'])
+        final_df = pd.DataFrame(columns=['advertiser_id', 'product_id', 'ranking', 'date'])
         for (name, temp_df) in df_grouped.groupby('advertiser_id'):
             # df_temp = df_grouped.loc[df_grouped['advertiser_id'] == advertiser, :]
             df_temp = df_temp.sort_values('ctr', ascending=False).head(n)
