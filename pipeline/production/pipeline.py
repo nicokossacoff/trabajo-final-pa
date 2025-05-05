@@ -285,8 +285,8 @@ with DAG(
             'db_params': {
                 'database': 'postgres',
                 'user': 'postgres',
-                'password': 'password',
-                'host': 'direccion_ip',
+                'password': 'postgres',
+                'host': '34.173.90.191',
                 'port': '5432'
             }
         }
