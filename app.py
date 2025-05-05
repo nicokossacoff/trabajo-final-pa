@@ -4,19 +4,13 @@ from datetime import datetime
 app= FastAPI()
 
 def sql_query(query):
-    # Connect to the SQLite database
+
     conn = sqlite3.connect('/home/javo/Documents/Maestria/MCD06/tp_airflow/airflow.db')
     cursor = conn.cursor()
-    
-    # Execute the SQL query
     cursor.execute(query)
-    
-    # Fetch all results
     rows = cursor.fetchall()
-    
-    # Close the database connection
     conn.close()
-    
+
     return rows
 
 @app.get ("/")
