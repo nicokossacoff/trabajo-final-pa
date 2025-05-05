@@ -235,10 +235,17 @@ def upload_to_sql(db_params: dict) -> None:
         # Creates a bucket instance
         bucket = client.bucket(BUCKET_NAME)
 
-        path = f'postgresql+psycopg2://{db_params['user']}:{db_params['password']}@{db_params['host']}:{db_params['port']}/{db_params['database']}'
+        #path = f'postgresql+psycopg2://{db_params['user']}:{db_params['password']}@{db_params['host']}:{db_params['port']}/{db_params['database']}'
 
         # Create a connection with the database
-        conn = create_engine(path)
+        conn = psycopg2.connect(
+            dbname=db_params['database'],
+            user=db_params['user'],
+            password=db_params['password'],
+            host=db_params['host'],
+            port=db_params['port']
+        )
+        cursor = conn.cursor()
 
         # Uploads DataFrames to SQL
         current_date = datetime.datetime.now().strftime('%Y-%m-%d')
@@ -254,11 +261,20 @@ def upload_to_sql(db_params: dict) -> None:
         content_ctr_products = blob_ctr_products.download_as_bytes()
         df_top_ctr_products = pd.read_parquet(io.BytesIO(content_ctr_products))
         #df_top_ctr_products.to_sql('top_ctr_products', conn, if_exists='append', index=False)
+        for _, row in df_top_products.iterrows():
+            cursor.execute("""
+                INSERT INTO top_products (advertiser_id, product_id, ranking, date)
+                VALUES (%s, %s, %s, %s)
+            """, (row['advertiser_id'], row['product_id'], row['ranking'],row['date']))
 
-        with conn.connect() as connection:
-            df_top_products.to_sql('top_products', connection, if_exists='append', index=False)
-            df_top_ctr_products.to_sql('top_ctr_products', connection, if_exists='append', index=False)
-
+        for _, row in df_top_ctr_products.iterrows():
+            cursor.execute("""
+                INSERT INTO top_ctr_products (advertiser_id, product_id, ranking, date)
+                VALUES (%s, %s, %s, %s)
+            """, (row['advertiser_id'], row['product_id'], row['ranking'],row['date']))
+        
+        
+        conn.commit()
 
         print('SQL uploaded successfully')
     except Exception as error:
