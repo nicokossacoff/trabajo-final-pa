@@ -197,12 +197,12 @@ def top_ctr_products(n: int = 20) -> None:
         final_df = pd.DataFrame(columns=['advertiser_id', 'product_id', 'ranking', 'date'])
         for (name, temp_df) in df_grouped.groupby('advertiser_id'):
             # df_temp = df_grouped.loc[df_grouped['advertiser_id'] == advertiser, :]
-            df_temp = df_temp.sort_values('ctr', ascending=False).head(n)
-            df_temp['date'] = CURRENT_DATE
+            temp_df = temp_df.sort_values('ctr', ascending=False).head(n)
+            temp_df['date'] = CURRENT_DATE
             temp_df['ranking'] = np.arange(1, 21)
-            df_temp = df_temp.loc[:, ['advertiser_id', 'product_id', 'ranking', 'date']]
-            print(f'Added {len(df_temp)} products for {name}')
-            final_df = pd.concat([final_df, df_temp], ignore_index=True)
+            temp_df = temp_df.loc[:, ['advertiser_id', 'product_id', 'ranking', 'date']]
+            print(f'Added {len(temp_df)} products for {name}')
+            final_df = pd.concat([final_df, temp_df], ignore_index=True)
 
         # Creates a blob file to upload the DataFrame to GCS
         output_blob = bucket.blob(f'temp/top_ctr_products_{CURRENT_DATE}.parquet')
