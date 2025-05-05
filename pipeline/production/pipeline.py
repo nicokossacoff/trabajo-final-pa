@@ -8,6 +8,7 @@ import io
 from sqlalchemy import create_engine
 from airflow.models.dag import DAG
 from airflow.operators.python import PythonOperator
+import numpy as np
 from airflow.operators.bash import BashOperator
 
 
