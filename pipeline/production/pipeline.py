@@ -247,13 +247,18 @@ def upload_to_sql(db_params: dict) -> None:
         blob_top_products = bucket.blob(f'temp/top_products_{current_date}.parquet')
         content_top_products = blob_top_products.download_as_bytes()
         df_top_products = pd.read_parquet(io.BytesIO(content_top_products))
-        df_top_products.to_sql('top_products', conn, if_exists='append', index=False)
+        #df_top_products.to_sql('top_products', conn, if_exists='append', index=False)
 
         # Loads the TopCTRProduct DataFrame from GCS
         blob_ctr_products = bucket.blob(f'temp/top_ctr_products_{current_date}.parquet')
         content_ctr_products = blob_ctr_products.download_as_bytes()
         df_top_ctr_products = pd.read_parquet(io.BytesIO(content_ctr_products))
-        df_top_ctr_products.to_sql('top_ctr_products', conn, if_exists='append', index=False)
+        #df_top_ctr_products.to_sql('top_ctr_products', conn, if_exists='append', index=False)
+
+        with conn.connect() as connection:
+            df_top_products.to_sql('top_products', connection, if_exists='append', index=False)
+            df_top_ctr_products.to_sql('top_ctr_products', connection, if_exists='append', index=False)
+
 
         print('SQL uploaded successfully')
     except Exception as error:
