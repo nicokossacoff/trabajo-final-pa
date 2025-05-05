@@ -10,8 +10,8 @@ from airflow.models.dag import DAG
 from airflow.operators.python import PythonOperator
 from airflow.operators.bash import BashOperator
 
-SERVICE_ACCOUNT_PATH = '/Users/nicolaskossacoff/Documents/Projects/trabajo-final-pa/service_account.json'
-BUCKET_NAME = 'trabajo-final-pa'
+
+BUCKET_NAME = ' tp-buckets-prog-avanzada'
 CURRENT_DATE = datetime.datetime.now().strftime('%Y-%m-%d')
 PREVIOUS_DATE = (datetime.datetime.now() - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
 
