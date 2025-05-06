@@ -46,8 +46,8 @@ def get_recommendations(ADV: str, model: str):
     recommendations_data = []
     for row in rows:
         recommendation = {
-            "advertiser_id": row['advertiser_id'],
-            "product_id": row['product_id']
+            "advertiser_id": row[0],
+            "product_id": row[1]
         }
         recommendations_data.append(recommendation)
    
@@ -59,16 +59,31 @@ def get_history(ADV: str):
     query= f"""
     SELECT advertiser_id, product_id, date FROM top_products WHERE advertiser_id = '{ADV}' AND date >= CURRENT_DATE - INTERVAL '7 days'
     """
+    print(query)
     rows=sql_query(query)
     history_data = []
     for row in rows:
         history = {
-            "advertiser_id": row['advertiser_id'],
-            "product_id": row['product_id'],
-            "date": row['date']
+            "advertiser_id": row[0],
+            "product_id": row[1],
+            "date": row[2]
         }
         history_data.append(history)
     return {"history": history_data}
+
+@app.get("/test")
+def test():
+    query=""" select * from top_products limit 10"""
+    rows=sql_query(query)
+    test_data = []
+    for row in rows:
+        test = {
+            "advertiser_id": row[0],
+            "product_id": row[1],
+            "date": row[2]
+        }
+        test_data.append(test)
+    return {"test": test_data}
 
 if __name__ == "__main__":
     uvicorn.run("app:app", host="0.0.0.0", port=int(os.environ.get("PORT", 8000)), log_level="info")
