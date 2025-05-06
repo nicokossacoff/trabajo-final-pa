@@ -1,16 +1,25 @@
 from fastapi import FastAPI
-import sqlite3 
+import uvicorn
+import os
+
 from datetime import datetime
 app= FastAPI()
+import psycopg2
 
 def sql_query(query):
 
-    conn = sqlite3.connect('/home/javo/Documents/Maestria/MCD06/tp_airflow/airflow.db')
-    cursor = conn.cursor()
+    engine = psycopg2.connect(
+    database="postgres",
+    user="postgres",
+    password="postgres",
+    host="34.173.90.191",
+    port='5432'
+    )
+    cursor = engine.cursor()
     cursor.execute(query)
     rows = cursor.fetchall()
-    conn.close()
-
+    cursor.close()
+    engine.close()
     return rows
 
 @app.get ("/")
@@ -27,15 +36,15 @@ def get_recommendations(ADV: str, model: str):
     else:
         return {"error": "Invalid model specified. Use 'topctr' or 'topproduct'."}
      
-    date= '2025-05-03' #date.today().strftime('%Y-%m-%d') 
+    date= datetime.now().strftime("%Y-%m-%d") 
 
     query= f"""
-    SELECT advertiser_id, product_id FROM {table} WHERE advertiser_id = '{ADV}' AND date = '{date}'
+    SELECT advertiser_id, product_id FROM {table} WHERE advertiser_id = '{ADV}' AND date = '{date}' and ranking <=20
     """
     rows=sql_query(query)
 
     recommendations_data = []
-    for index, row in rows.iterrows():
+    for row in rows:
         recommendation = {
             "advertiser_id": row['advertiser_id'],
             "product_id": row['product_id']
@@ -45,14 +54,14 @@ def get_recommendations(ADV: str, model: str):
     return {"recommendations": recommendations_data}
 
 @app.get("/history/{ADV}")
-#get history o f the las 7 days for adv
+#get history of the las 7 days for adv
 def get_history(ADV: str):
     query= f"""
-    SELECT advertiser_id, product_id, date FROM top_products WHERE advertiser_id = '{ADV}' AND date >= date('now', '-7 days')
+    SELECT advertiser_id, product_id, date FROM top_products WHERE advertiser_id = '{ADV}' AND date >= CURRENT_DATE - INTERVAL '7 days'
     """
     rows=sql_query(query)
     history_data = []
-    for index, row in rows.iterrows():
+    for row in rows:
         history = {
             "advertiser_id": row['advertiser_id'],
             "product_id": row['product_id'],
@@ -61,4 +70,5 @@ def get_history(ADV: str):
         history_data.append(history)
     return {"history": history_data}
 
-
+if __name__ == "__main__":
+    uvicorn.run("app:app", host="0.0.0.0", port=int(os.environ.get("PORT", 8000)), log_level="info")
