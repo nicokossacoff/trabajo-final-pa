@@ -10,11 +10,14 @@ from airflow.models.dag import DAG
 from airflow.operators.python import PythonOperator
 import numpy as np
 from airflow.operators.bash import BashOperator
+from credentials import Credentials
 
 
-BUCKET_NAME = 'tp-buckets-prog-avanzada'
+#BUCKET_NAME = 'tp-buckets-prog-avanzada'
 CURRENT_DATE = datetime.datetime.now().strftime('%Y-%m-%d')
 PREVIOUS_DATE = (datetime.datetime.now() - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
+
+credentials = Credentials()
 
 def filter_data() -> None:
     """
@@ -27,7 +30,7 @@ def filter_data() -> None:
         # Create a Bucket Client
         #client = get_authenticated_client()
         client = storage.Client()
-        bucket = client.bucket(BUCKET_NAME)
+        bucket = client.bucket(credentials.BUCKET_NAME)
 
         # Creates a reference (a point) to the file in GCS that we want to load
         blob = bucket.blob(f'raw_data/advertiser_ids.parquet')
@@ -44,7 +47,7 @@ def filter_data() -> None:
         # previous_date = (datetime.datetime.now() - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
 
         # Returns all the files in the bucket. This is an iterator
-        blobs = client.list_blobs(BUCKET_NAME, prefix='raw_data/')
+        blobs = client.list_blobs(credentials.BUCKET_NAME, prefix='raw_data/')
 
         # Iterate through the blobs
         for blob in blobs:
@@ -89,7 +92,7 @@ def top_products(n: int = 20) -> None:
         # Creates a Bucker client
         #client = get_authenticated_client()
         client = storage.Client()
-        bucket = client.bucket(BUCKET_NAME)
+        bucket = client.bucket(credentials.BUCKET_NAME)
 
         # Gets the current date and the previous date
         # current_date = datetime.datetime.now().strftime('%Y-%m-%d')
@@ -144,7 +147,7 @@ def top_ctr_products(n: int = 20) -> None:
         #client = get_authenticated_client()
         client = storage.Client()
         # Creates a bucker instance
-        bucket = client.bucket(BUCKET_NAME)
+        bucket = client.bucket(credentials.BUCKET_NAME)
 
         # Creates a blob instance to access the file in GCS
         blob = bucket.blob(f'temp/ads_views_{CURRENT_DATE}_filtered.parquet')
@@ -204,7 +207,7 @@ def upload_to_sql(db_params: dict) -> None:
         #client = get_authenticated_client()
         client = storage.Client()
         # Creates a bucket instance
-        bucket = client.bucket(BUCKET_NAME)
+        bucket = client.bucket(credentials.BUCKET_NAME)
 
         #path = f'postgresql+psycopg2://{db_params['user']}:{db_params['password']}@{db_params['host']}:{db_params['port']}/{db_params['database']}'
 
@@ -279,11 +282,11 @@ with DAG(
         python_callable=upload_to_sql,
         op_kwargs={
             'db_params': {
-                'database': 'postgres',
-                'user': 'postgres',
-                'password': 'postgres',
-                'host': '34.173.90.191',
-                'port': '5432'
+                'database': credentials.DATABASE,
+                'user': credentials.USER,
+                'password': credentials.PASSWORD,
+                'host': credentials.HOST,
+                'port': credentials.PORT
             }
         }
     )
