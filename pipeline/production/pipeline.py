@@ -16,35 +16,6 @@ BUCKET_NAME = 'tp-buckets-prog-avanzada'
 CURRENT_DATE = datetime.datetime.now().strftime('%Y-%m-%d')
 PREVIOUS_DATE = (datetime.datetime.now() - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
 
-def get_authenticated_client(scopes: list = None) -> storage.Client:
-    """
-    Creates a Google Cloud Storage client with the given service account credentials.
-
-    Args:
-        scopes (list): List of scopes for the credentials. If None, defaults to cloud-platform scope.
-    Returns:
-        storage.Client: Authenticated Google Cloud Storage client.
-    """
-    # Check if the service account path is provided. If not provided, defaults to cloud-platform scope
-    if scopes is None:
-        # Gets the credentials from the service account file with the cloud-platform scope
-        credentials = service_account.Credentials.from_service_account_file(
-            SERVICE_ACCOUNT_PATH,
-            scopes=["https://www.googleapis.com/auth/cloud-platform"]
-        )
-        # Creates a client with the credentials
-        client = storage.Client(credentials=credentials)
-        return client
-    else:
-        # Get credentials from the service account file with the specified scopes
-        credentials = service_account.Credentials.from_service_account_file(
-            SERVICE_ACCOUNT_PATH,
-            scopes=scopes
-        )
-        # Creates a client with the credentials
-        client = storage.Client(credentials=credentials)
-        return client
-
 def filter_data() -> None:
     """
     Filters files in the raw data to only include active advertisers.
