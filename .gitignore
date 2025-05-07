@@ -179,3 +179,4 @@ cython_debug/
 .idea/
 test.ipynb
 service_account.json
+pipeline/credentials.py
