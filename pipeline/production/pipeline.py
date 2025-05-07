@@ -12,8 +12,6 @@ import numpy as np
 from airflow.operators.bash import BashOperator
 from credentials import Credentials
 
-
-#BUCKET_NAME = 'tp-buckets-prog-avanzada'
 CURRENT_DATE = datetime.datetime.now().strftime('%Y-%m-%d')
 PREVIOUS_DATE = (datetime.datetime.now() - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
 
@@ -28,23 +26,18 @@ def filter_data() -> None:
     """
     try:
         # Create a Bucket Client
-        #client = get_authenticated_client()
         client = storage.Client()
         bucket = client.bucket(credentials.BUCKET_NAME)
 
-        # Creates a reference (a point) to the file in GCS that we want to load
+        # Creates a reference to the file in GCS that we want to load
         blob = bucket.blob(f'raw_data/advertiser_ids.parquet')
-        # Actually downloads the file in memory as bytes
+        # Downloads the file in memory as bytes
         content = blob.download_as_bytes()
 
         # Extract active advertisers
         # The io.BytesIO() function wraps the bytes in a buffer that Pandas can read
         advertisers_df = pd.read_parquet(io.BytesIO(content))
         active_advertisers = advertisers_df['advertiser_id'].tolist()
-
-        # Gets the current date and the previous date
-        # current_date = datetime.datetime.now().strftime('%Y-%m-%d')
-        # previous_date = (datetime.datetime.now() - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
 
         # Returns all the files in the bucket. This is an iterator
         blobs = client.list_blobs(credentials.BUCKET_NAME, prefix='raw_data/')
@@ -90,13 +83,8 @@ def top_products(n: int = 20) -> None:
     """
     try:
         # Creates a Bucker client
-        #client = get_authenticated_client()
         client = storage.Client()
         bucket = client.bucket(credentials.BUCKET_NAME)
-
-        # Gets the current date and the previous date
-        # current_date = datetime.datetime.now().strftime('%Y-%m-%d')
-        # previous_date = (datetime.datetime.now() - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
 
         # Creates a reference (a point) to the file in GCS that we want to load
         blob = bucket.blob(f'temp/product_views_{CURRENT_DATE}_filtered.parquet')
@@ -144,7 +132,6 @@ def top_ctr_products(n: int = 20) -> None:
     """
     try:
         # Creates an authenticated client to Cloud Storage
-        #client = get_authenticated_client()
         client = storage.Client()
         # Creates a bucker instance
         bucket = client.bucket(credentials.BUCKET_NAME)
@@ -170,7 +157,6 @@ def top_ctr_products(n: int = 20) -> None:
 
         final_df = pd.DataFrame(columns=['advertiser_id', 'product_id', 'ranking', 'date'])
         for (name, temp_df) in df_grouped.groupby('advertiser_id'):
-            # df_temp = df_grouped.loc[df_grouped['advertiser_id'] == advertiser, :]
             temp_df = temp_df.sort_values('ctr', ascending=False).head(n)
             temp_df['date'] = CURRENT_DATE
             temp_df['ranking'] = np.arange(1, len(temp_df) + 1)
@@ -204,12 +190,9 @@ def upload_to_sql(db_params: dict) -> None:
     """
     try:
         # Creates an authenticated client to Cloud Storage
-        #client = get_authenticated_client()
         client = storage.Client()
         # Creates a bucket instance
         bucket = client.bucket(credentials.BUCKET_NAME)
-
-        #path = f'postgresql+psycopg2://{db_params['user']}:{db_params['password']}@{db_params['host']}:{db_params['port']}/{db_params['database']}'
 
         # Create a connection with the database
         conn = psycopg2.connect(
@@ -228,13 +211,11 @@ def upload_to_sql(db_params: dict) -> None:
         blob_top_products = bucket.blob(f'temp/top_products_{current_date}.parquet')
         content_top_products = blob_top_products.download_as_bytes()
         df_top_products = pd.read_parquet(io.BytesIO(content_top_products))
-        #df_top_products.to_sql('top_products', conn, if_exists='append', index=False)
 
         # Loads the TopCTRProduct DataFrame from GCS
         blob_ctr_products = bucket.blob(f'temp/top_ctr_products_{current_date}.parquet')
         content_ctr_products = blob_ctr_products.download_as_bytes()
         df_top_ctr_products = pd.read_parquet(io.BytesIO(content_ctr_products))
-        #df_top_ctr_products.to_sql('top_ctr_products', conn, if_exists='append', index=False)
         for _, row in df_top_products.iterrows():
             cursor.execute("""
                 INSERT INTO top_products (advertiser_id, product_id, ranking, date)
@@ -258,7 +239,7 @@ with DAG(
     dag_id='recommendation-pipeline',
     description='This pipeline is used to generate recommendations for users.',
     start_date=datetime.datetime(2025, 5, 2),
-    schedule_interval='0 0 * * *' # ⏰ Medianoche todos los días
+    schedule_interval='0 0 * * *'
 ) as dag:
     data_filter = PythonOperator(
         task_id='FilterData',
