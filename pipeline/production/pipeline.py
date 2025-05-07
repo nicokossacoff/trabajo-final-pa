@@ -263,13 +263,13 @@ def upload_to_sql(db_params: dict) -> None:
         #df_top_ctr_products.to_sql('top_ctr_products', conn, if_exists='append', index=False)
         for _, row in df_top_products.iterrows():
             cursor.execute("""
-                INSERT INTO top_products (advertiser_id, product_id, ranking, date)
+                INSERT INTO recommendation_pipeline.top_products (advertiser_id, product_id, ranking, date)
                 VALUES (%s, %s, %s, %s)
             """, (row['advertiser_id'], row['product_id'], row['ranking'],row['date']))
 
         for _, row in df_top_ctr_products.iterrows():
             cursor.execute("""
-                INSERT INTO top_ctr_products (advertiser_id, product_id, ranking, date)
+                INSERT INTO recommendation_pipeline.top_ctr_products (advertiser_id, product_id, ranking, date)
                 VALUES (%s, %s, %s, %s)
             """, (row['advertiser_id'], row['product_id'], row['ranking'],row['date']))
         
