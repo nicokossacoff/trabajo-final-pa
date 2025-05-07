@@ -170,7 +170,7 @@ def top_ctr_products(n: int = 20) -> None:
             # df_temp = df_grouped.loc[df_grouped['advertiser_id'] == advertiser, :]
             temp_df = temp_df.sort_values('ctr', ascending=False).head(n)
             temp_df['date'] = CURRENT_DATE
-            temp_df['ranking'] = np.arange(1, 21)
+            temp_df['ranking'] = np.arange(1, len(temp_df) + 1)
             temp_df = temp_df.loc[:, ['advertiser_id', 'product_id', 'ranking', 'date']]
             print(f'Added {len(temp_df)} products for {name}')
             final_df = pd.concat([final_df, temp_df], ignore_index=True)
