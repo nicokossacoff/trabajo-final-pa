@@ -239,7 +239,13 @@ with DAG(
     dag_id='recommendation-pipeline',
     description='This pipeline is used to generate recommendations for users.',
     start_date=datetime.datetime(2025, 5, 2),
-    schedule_interval='0 0 * * *'
+    schedule_interval='0 0 * * *', # Every day at midight. Is the same as @daily
+    dagrun_timeout=datetime.timedelta(minutes=30),
+    catchup=False,
+    default_args={
+        'retries': 1,
+        'retry_delay': datetime.timedelta(minutes=5)
+    }
 ) as dag:
     data_filter = PythonOperator(
         task_id='FilterData',
