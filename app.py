@@ -11,7 +11,7 @@ def sql_query(query):
     engine = psycopg2.connect(
     database="postgres",
     user="postgres",
-    password="postgres",
+    password="JHZ1nea@bge8vbw7ymf",
     host="34.173.90.191",
     port='5432'
     )
