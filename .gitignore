@@ -173,10 +173,17 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
+# macOS files
 .DS_Store
+
+# Storage files
 *.parquet
 *.csv
+
+# Folders
 .idea/
+fast-api/
+
+# Notebooks & scripts
 test.ipynb
-service_account.json
 pipeline/production/credentials.py
