@@ -12,12 +12,9 @@ import numpy as np
 from airflow.operators.bash import BashOperator
 from credentials import Credentials
 
-CURRENT_DATE = datetime.datetime.now().strftime('%Y-%m-%d')
-PREVIOUS_DATE = (datetime.datetime.now() - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
-
 credentials = Credentials()
 
-def filter_data() -> None:
+def filter_data(execution_date, **kwargs) -> None:
     """
     Filters files in the raw data to only include active advertisers.
 
@@ -25,6 +22,11 @@ def filter_data() -> None:
         None
     """
     try:
+        # Generate dates
+        execution_date = execution_date.date()
+        CURRENT_DATE = execution_date.strftime('%Y-%m-%d')
+        PREVIOUS_DATE = (execution_date - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
+        
         # Create a Bucket Client
         client = storage.Client()
         bucket = client.bucket(credentials.BUCKET_NAME)
@@ -72,7 +74,7 @@ def filter_data() -> None:
     except Exception as error:
         print(f'An error occurred: {error}')
 
-def top_products(n: int = 20) -> None:
+def top_products(execution_date, n: int = 20, **kwargs) -> None:
     """
     Generates a list of the top 20 products for each advertiser based on the number of views.
 
@@ -82,6 +84,11 @@ def top_products(n: int = 20) -> None:
         None
     """
     try:
+        # Generate dates
+        execution_date = execution_date.date()
+        CURRENT_DATE = execution_date.strftime('%Y-%m-%d')
+        PREVIOUS_DATE = (execution_date - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
+        
         # Creates a Bucker client
         client = storage.Client()
         bucket = client.bucket(credentials.BUCKET_NAME)
@@ -121,7 +128,7 @@ def top_products(n: int = 20) -> None:
     except Exception as error:
         print(f'An error occurred: {error}')
 
-def top_ctr_products(n: int = 20) -> None:
+def top_ctr_products(execution_date, n: int = 20, **kwargs) -> None:
     """
     Generates a list of the top 20 products for each advertiser based on the CTR.
 
@@ -131,6 +138,11 @@ def top_ctr_products(n: int = 20) -> None:
         None
     """
     try:
+        # Generate dates
+        execution_date = execution_date.date()
+        CURRENT_DATE = execution_date.strftime('%Y-%m-%d')
+        PREVIOUS_DATE = (execution_date - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
+        
         # Creates an authenticated client to Cloud Storage
         client = storage.Client()
         # Creates a bucker instance
@@ -179,7 +191,7 @@ def top_ctr_products(n: int = 20) -> None:
     except Exception as error:
         print(f'An error occurred: {error}')
 
-def upload_to_sql(db_params: dict) -> None:
+def upload_to_sql(execution_date, db_params: dict, **kwargs) -> None:
     """
     Uploads DataFrames to the SQLite database.
 
@@ -189,6 +201,11 @@ def upload_to_sql(db_params: dict) -> None:
         None
     """
     try:
+        # Generate dates
+        execution_date = execution_date.date()
+        CURRENT_DATE = execution_date.strftime('%Y-%m-%d')
+        PREVIOUS_DATE = (execution_date - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
+        
         # Creates an authenticated client to Cloud Storage
         client = storage.Client()
         # Creates a bucket instance
@@ -204,29 +221,26 @@ def upload_to_sql(db_params: dict) -> None:
         )
         cursor = conn.cursor()
 
-        # Uploads DataFrames to SQL
-        current_date = datetime.datetime.now().strftime('%Y-%m-%d')
-
         # Loads the TopProduct DataFrame from GCS
-        blob_top_products = bucket.blob(f'temp/top_products_{current_date}.parquet')
+        blob_top_products = bucket.blob(f'temp/top_products_{CURRENT_DATE}.parquet')
         content_top_products = blob_top_products.download_as_bytes()
         df_top_products = pd.read_parquet(io.BytesIO(content_top_products))
 
         # Loads the TopCTRProduct DataFrame from GCS
-        blob_ctr_products = bucket.blob(f'temp/top_ctr_products_{current_date}.parquet')
+        blob_ctr_products = bucket.blob(f'temp/top_ctr_products_{CURRENT_DATE}.parquet')
         content_ctr_products = blob_ctr_products.download_as_bytes()
         df_top_ctr_products = pd.read_parquet(io.BytesIO(content_ctr_products))
         for _, row in df_top_products.iterrows():
             cursor.execute("""
                 INSERT INTO top_products (advertiser_id, product_id, ranking, date)
                 VALUES (%s, %s, %s, %s)
-            """, (row['advertiser_id'], row['product_id'], row['ranking'],row['date']))
+            """, (row['advertiser_id'], row['product_id'], row['ranking'], row['date']))
 
         for _, row in df_top_ctr_products.iterrows():
             cursor.execute("""
                 INSERT INTO top_ctr_products (advertiser_id, product_id, ranking, date)
                 VALUES (%s, %s, %s, %s)
-            """, (row['advertiser_id'], row['product_id'], row['ranking'],row['date']))
+            """, (row['advertiser_id'], row['product_id'], row['ranking'], row['date']))
         
         
         conn.commit()
