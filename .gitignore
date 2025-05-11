@@ -182,8 +182,7 @@ cython_debug/
 
 # Folders
 .idea/
-fast-api/
 
 # Notebooks & scripts
-test.ipynb
-pipeline/production/credentials.py
+*test.ipynb
+*credentials.py
