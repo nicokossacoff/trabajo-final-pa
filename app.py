@@ -1,4 +1,7 @@
 from fastapi import FastAPI
+from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 import uvicorn
 import os
 
@@ -6,25 +9,29 @@ from datetime import datetime
 app= FastAPI()
 import psycopg2
 
+
 def sql_query(query):
 
     engine = psycopg2.connect(
-    database="postgres",
-    user="postgres",
-    password="JHZ1nea@bge8vbw7ymf",
-    host="34.173.90.191",
-    port='5432'
+    database=os.environ.get("DB_NAME"),
+    user=os.environ.get("DB_USER"),
+    password=os.environ.get("DB_PASSWORD"),
+    host=os.environ.get("DB_HOST"),
+    port=os.environ.get("DB_PORT")
     )
     cursor = engine.cursor()
     cursor.execute(query)
     rows = cursor.fetchall()
     cursor.close()
     engine.close()
+    print(os.environ.get("DB_PASSWORD"))
     return rows
 
-@app.get ("/")
-def root():
-    return {"message": "Hello World"}
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+@app.get ("/",include_in_schema=False)
+async def root():
+    return RedirectResponse("/static/home.html")
 
 @app.get ("/recommendations/{ADV}/{model}")
 def get_recommendations(ADV: str, model: str):
@@ -84,6 +91,127 @@ def test():
         }
         test_data.append(test)
     return {"test": test_data}
+
+@app.get("/stats")
+def get_recommendation_stats():
+    """
+    Devuelve estadísticas sobre las recomendaciones, incluyendo:
+    - Cantidad de advertisers
+    - Advertisers que más varían sus recomendaciones por día
+    - Otros insights relevantes
+    """
+    stats = {}
+    
+    # 1. Cantidad total de advertisers
+    query_total_advertisers = """
+    SELECT COUNT(DISTINCT advertiser_id) FROM top_products
+    """
+    rows = sql_query(query_total_advertisers)
+    stats["total_advertisers"] = rows[0][0]
+    
+    # 2. Top 10 advertisers con más productos recomendados
+    query_most_products = """
+    SELECT advertiser_id, COUNT(DISTINCT product_id) as product_count
+    FROM top_products
+    GROUP BY advertiser_id
+    ORDER BY product_count DESC
+    LIMIT 10
+    """
+    rows = sql_query(query_most_products)
+    top_advertisers_by_products = []
+    for row in rows:
+        top_advertisers_by_products.append({
+            "advertiser_id": row[0],
+            "total_products": row[1]
+        })
+    stats["top_advertisers_by_products"] = top_advertisers_by_products
+    
+    # 3. Advertisers que más varían sus recomendaciones por día (versión simplificada)
+    # Calculamos cuántos productos diferentes recomienda cada advertiser en los últimos 7 días
+    query_variation = """
+    SELECT 
+        advertiser_id,
+        COUNT(DISTINCT product_id) as total_unique_products,
+        COUNT(DISTINCT date) as days_with_recommendations,
+        COUNT(DISTINCT product_id) / COUNT(DISTINCT date) as product_variation_ratio
+    FROM top_products
+    WHERE date >= CURRENT_DATE - INTERVAL '7 days'
+    GROUP BY advertiser_id
+    HAVING COUNT(DISTINCT date) > 0
+    ORDER BY product_variation_ratio DESC
+    LIMIT 10
+    """
+    
+    rows = sql_query(query_variation)
+    top_variation_advertisers = []
+    for row in rows:
+        top_variation_advertisers.append({
+            "advertiser_id": row[0],
+            "total_unique_products": row[1],
+            "days_with_recommendations": row[2],
+            "product_variation_ratio": round(float(row[3]), 2)
+        })
+    stats["top_variation_advertisers"] = top_variation_advertisers
+    
+    # 4. Estadísticas de los últimos 7 días
+    query_last_week = """
+    SELECT 
+        date,
+        COUNT(DISTINCT advertiser_id) as advertisers_count,
+        COUNT(DISTINCT product_id) as products_count,
+        COUNT(*) as total_recommendations
+    FROM top_products
+    WHERE date >= CURRENT_DATE - INTERVAL '7 days'
+    GROUP BY date
+    ORDER BY date
+    """
+    rows = sql_query(query_last_week)
+    daily_stats = []
+    for row in rows:
+        daily_stats.append({
+            "date": row[0].strftime("%Y-%m-%d"),
+            "advertisers_count": row[1],
+            "products_count": row[2],
+            "total_recommendations": row[3]
+        })
+    stats["daily_stats"] = daily_stats
+    
+    # 5. Comparativa entre modelos top_ctr_products y top_products
+    query_model_comparison = """
+    WITH top_products_stats AS (
+        SELECT 
+            'top_products' as model,
+            COUNT(DISTINCT advertiser_id) as advertisers_count,
+            COUNT(DISTINCT product_id) as products_count,
+            COUNT(*) as total_recommendations
+        FROM top_products
+        WHERE date = CURRENT_DATE
+    ),
+    top_ctr_stats AS (
+        SELECT 
+            'top_ctr_products' as model,
+            COUNT(DISTINCT advertiser_id) as advertisers_count,
+            COUNT(DISTINCT product_id) as products_count,
+            COUNT(*) as total_recommendations
+        FROM top_ctr_products
+        WHERE date = CURRENT_DATE
+    )
+    SELECT * FROM top_products_stats
+    UNION ALL
+    SELECT * FROM top_ctr_stats
+    """
+    rows = sql_query(query_model_comparison)
+    model_comparison = []
+    for row in rows:
+        model_comparison.append({
+            "model": row[0],
+            "advertisers_count": row[1],
+            "products_count": row[2],
+            "total_recommendations": row[3]
+        })
+    stats["model_comparison"] = model_comparison
+    
+    return stats
 
 if __name__ == "__main__":
     uvicorn.run("app:app", host="0.0.0.0", port=int(os.environ.get("PORT", 8000)), log_level="info")
