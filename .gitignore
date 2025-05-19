@@ -178,5 +178,12 @@ cython_debug/
 *.csv
 .idea/
 test.ipynb
+
+
+#misc
+*.txt
+*.ipynb
+
 service_account.json
 pipeline/production/credentials.py
+
