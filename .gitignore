@@ -179,6 +179,11 @@ cython_debug/
 .idea/
 test.ipynb
 
+
 #misc
 *.txt
 *.ipynb
+
+service_account.json
+pipeline/production/credentials.py
+
