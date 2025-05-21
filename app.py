@@ -46,7 +46,7 @@ def get_recommendations(ADV: str, model: str):
     date= datetime.now().strftime("%Y-%m-%d") 
 
     query= f"""
-          SELECT advertiser_id, product_id FROM '{table}' WHERE advertiser_id = '{ADV}' AND date = current_date - interval '1 DAYS' and  ranking <=20
+          SELECT advertiser_id, product_id FROM {table} WHERE advertiser_id = '{ADV}' AND date >= current_date - interval '1 days'
     """
     rows=sql_query(query)
 
